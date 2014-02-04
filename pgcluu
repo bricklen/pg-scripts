@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# pgcluu    Start pgcluu data logging
+#
+# chkconfig: - 64 36
+# description: pgcluu Postgresql performance monitoring application.
+# processname: pgcluu_collectd
+#
+# PgCluu Copyright Gilles Darold, http://pgcluu.darold.net/
+  
+## Source function library.
+. /etc/rc.d/init.d/functions
+
+. ~postgres/.bash_profile
+
+## Set PGPASSFILE variable if .pgpass exists
+[[ -x "$PGPASSFILE" ]] || PGPASSFILE=`ls ~postgres/.pgpass 2>/dev/null`
+
+
+## Define the executables
+exec=/usr/bin/pgcluu_collectd
+## Symlink pgcluu_collectd to /usr/bin
+## ln -s /path/to/pgcluu_collectd /usr/bin/pgcluu
+
+prog=pgcluu
+pidfile=/var/run/pgcluu/pgcluu.pid
+lockfile=/var/lock/subsys/$prog
+
+## Assumes you installed the binaries and directories to ~postgres
+## and that the output directory is "~postgres/pgcluu_collectd_stats".
+## Set the output directory if different
+collectd_files=$(echo ~postgres)/pgcluu_collectd_stats
+
+## Define the host and paths
+which_host=localhost
+which_psql=/usr/bin/psql
+which_sar=/usr/bin/sar
+
+[[ -x $PGPORT ]] || PGPORT=5432
+  
+start(){
+    [ -x $exec ] || exit 5
+    echo -n "Starting $prog: "
+    $exec --daemonize --interval=60 $collectd_files --host=$which_host --dbuser=postgres --sar=$which_sar --psql=$which_psql --port=$PGPORT --stat-type all
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+  
+stop(){
+    echo -n "Stopping $prog: "
+    perl $exec --kill
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+  
+restart(){
+    echo -n "Restarting $prog: "
+    echo
+    [ -x $exec ] || exit 5
+    perl $exec --kill
+    retval=$?
+ 
+    [ $retval -eq 0 ] && rm -f $lockfile
+    $exec --daemonize --interval=60 $collectd_files --host=$which_host --dbuser=postgres --sar=$which_sar --psql=$which_psql --port=$PGPORT --stat-type all
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+ 
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop}"
+        exit 2
+esac
+  
+exit $?
