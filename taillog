@@ -126,7 +126,7 @@ tail -F ${logfile} \
         gsub( /\(db=[a-z.]+\)/,                 "'`tput setaf 5`'&'`tput sgr0`'");
         if ( $0 !~ /\(user=(postgres)\)/ )
         {
-            gsub( /\(user=[a-z.]+\)/,           "'`tput setaf 6`'&'`tput sgr0`'");
+            gsub( /\(user=[a-z0-9.]+\)/,           "'`tput setaf 6`'&'`tput sgr0`'");
         }
         print; 
     }
