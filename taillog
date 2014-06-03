@@ -1,0 +1,150 @@
+#!/bin/bash -
+
+## author: Bricklen Anderson
+##
+## Filename: taillog
+## Usage: Run as postgres user, put this script in $PATH and execute as any other executable.
+
+set -o errexit
+
+PGPORT=5432     ## PGPORT is an environment var, but it is not always set, so default to 5432
+DBNAME=postgres ## maintenance db
+
+usage()
+{
+cat <<-EOF
+        Usage: ${0##*/} options
+
+        This script tails and colorizes the current db log in \$PGDATA/pg_log/
+
+        To tail the log in the default 5432 cluster:
+            taillog
+
+        To tail the current log in a specific cluster, eg. port 6543
+            taillog -p 6543
+
+        OPTIONS:
+        -h  Show this message.
+        -p  Specify a specific port
+EOF
+}
+
+
+while getopts ":p:h" OPTION
+do
+    case $OPTION in
+    h)
+        usage
+        exit 0
+        ;;
+    p)
+        PGPORT=$OPTARG
+        ;;
+    ?)
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+
+GAWK=`which gawk`
+
+## Get the PostgreSQL executable path. This is a hack.
+for p in `echo "/usr/pgsql-9.3/bin/psql /usr/bin/psql /usr/pgsql-9.2/bin/psql"`; do
+    if [ -x "$p" ]; then
+        PSQL="$p"
+        break
+    fi
+done
+
+## Exit if PostgreSQL executable path cannot be determined
+if [ "X$PSQL" == "X" ]; then
+    echo "Postgresql executables not found. Exiting."
+    exit 1
+fi
+
+## Get the PostgreSQL executable path
+export PGPATH=`dirname $PSQL`
+export PATH=$PGPATH:$PATH
+
+## Check if gawk exists
+if [ "X$GAWK" == "X" ]; then
+    echo "\"gawk\" not found. Please install gawk to use this script. Exiting."
+    exit 1
+fi
+
+
+## Exit if PostgreSQL port is not set
+if [ "X$PGPORT" == "X" ]; then
+    echo "Postgresql port not set. Exiting."
+    exit 1
+fi
+
+if [ -x "$PGPATH/pg_isready" ]; then
+    ## Test if the cluster is up
+    retval=`$PGPATH/pg_isready -q -U postgres -p $PGPORT -t 3; echo $?`
+    if [ $retval -ne 0 ]; then
+        echo "The PostgreSQL cluster at port $PGPORT does not appear to be responding. Exiting."
+        exit 1
+    fi
+fi
+
+SQL="
+with d as (select to_char(dt,'YYYY') as yyyy, to_char(dt,'MM') as mm, to_char(dt,'DD') dd from (select current_date at time zone current_setting('timezone') as dt) y)
+select  current_setting('data_directory') || '/' ||
+        current_setting('log_directory') || '/' ||
+        replace(replace(replace(
+            (case
+                when current_setting('log_destination') = 'csvlog' then replace(current_setting('log_filename'),'.log','.csv')
+                else current_setting('log_filename')
+            end),
+            '%Y',yyyy),
+            '%m',mm),
+            '%d',dd)
+from d";
+
+logfile=`psql -d $DBNAME -p $PGPORT -qtAc "$SQL"`
+
+if [[ ! -e "$logfile" ]]; then
+    echo "DB logfile \"$logfile\" does not exist. Aborting..."
+    exit 1
+fi
+
+# color codes
+# 0 - black
+# 1 - red
+# 2 - green
+# 3 - yellow
+# 4 - blue
+# 5 - magenta
+# 6 - cyan
+# 7 - white
+#
+# sgr0 - exit attribute mode (turn colors off too)
+
+## TODO:
+## tail -F should attempt to follow the file descriptor after rotation,
+## though it does not seem to work properly with postgres because a
+## new file is created upon rotation.
+## Workaround could be to put this in a wrapper that looks for
+## a new log file every N seconds.
+
+tail -F ${logfile} \
+| $GAWK --re-interval \
+    '
+    {
+        gsub( /duration: [0-9]{1,5}\.[0-9]*/,   "'`tput setaf 2`'&'`tput sgr0`'" ); 
+        gsub( /duration: [0-9]{6,}\.[0-9]*/,    "'`tput setaf 4; tput bold; tput smso`'&'`tput rmso; tput sgr0`'" ); 
+        gsub( /(ERROR|FATAL)/,                  "'`tput setaf 0; tput bold; tput setab 1`'&'`tput setab 0; tput sgr0`'");
+        gsub( /(WARNING|cancel)/,               "'`tput setaf 3`'&'`tput sgr0`'");
+        gsub( /\(db=[a-zA-Z0-9.]+\)/,                 "'`tput setaf 5`'&'`tput sgr0`'");
+        if ( $0 !~ /\(user=(postgres)\)/ )
+        {
+            gsub( /\(user=[a-zA-Z0-9.]+\)/,           "'`tput setaf 6`'&'`tput sgr0`'");
+        }
+        print; 
+    }
+    '
+
+exit 0
