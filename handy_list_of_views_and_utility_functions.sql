@@ -1,3 +1,5 @@
+-- NOTE: These have not been tested on a version of Postgres greater than 9.4 or so. YMMV.
+
 -- Some queries I've written or collected that I've found useful.
 
 -- Datatype and added functionality
