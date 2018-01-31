@@ -3,7 +3,8 @@ Postgres environment
 
 Disclaimer
 ----------
-These are Bricklen's personal notes, and may or may not be relevant to your environment.G
+These are Bricklen's personal notes, and may or may not be relevant to your environment.
+They are subject to change at any time.
 
 Documentation
 --------------
@@ -93,7 +94,7 @@ Backup and Recovery
 * This is the bread and butter for a DBA, so every aspect of B&R must be thoroughly tested.
 * Define how backups are going to be taken.
 * The purpose of each type, where they are going, commands to run them, commands to test them.
-* [WAL-E](https://github.com/wal-e/wal-e#google-storage) does work with GCP, [WAL-G](https://github.com/wal-g/wal-g) does not work GCP.
+* [WAL-E](https://github.com/wal-e/wal-e#google-storage) does work with GCP, [WAL-G](https://github.com/wal-g/wal-g) currently does not work with GCP.
 * Have a look at [pghoard](https://github.com/ohmu/pghoard) and [pgbackrest](http://pgbackrest.org/)
 * Document and test how recoveries are to happen, what the commands are, who should have access, when a recovery should happen.
 
