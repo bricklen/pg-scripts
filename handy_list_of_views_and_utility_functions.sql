@@ -941,3 +941,55 @@ $func$ LANGUAGE sql STRICT IMMUTABLE;
 
 GRANT EXECUTE ON FUNCTION public.day_conversions() TO public;
 
+
+
+
+-- To show individual corrupted indexes, using the "amcheck" extension
+DO $$
+DECLARE
+    rec RECORD;
+    current_index TEXT;
+BEGIN
+IF (select true from pg_catalog.pg_extension where extname like 'amcheck%') IS TRUE THEN
+    FOR rec IN 
+        SELECT  n.nspname as schema_name,
+                c.relname as index_name,
+                c.relpages,
+                c.oid as index_oid
+        FROM pg_index i
+        JOIN pg_opclass op ON i.indclass[0] = op.oid
+        JOIN pg_am am ON op.opcmethod = am.oid
+        JOIN pg_class c ON i.indexrelid = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE am.amname = 'btree' 
+        --AND n.nspname = 'pg_catalog' /* optional, uncomment for just system indexes */
+        -- Don't check temp tables, which may be from another session
+        -- and do not check unlogged relations
+        AND c.relpersistence not in ('u','t')
+        -- Function may throw an error when this is omitted:
+        AND i.indisready 
+        AND i.indisvalid
+        ORDER BY n.nspname, c.relname
+    LOOP
+        BEGIN
+            current_index := coalesce(rec.schema_name::TEXT,'public')||'.'||rec.index_name::TEXT;
+            --RAISE NOTICE 'About to check index %', current_index;
+            PERFORM bt_index_check(index => rec.index_oid);
+            PERFORM bt_index_parent_check(index => rec.index_oid);
+        EXCEPTION
+            WHEN others THEN 
+                RAISE WARNING 'Failed index check for index %',current_index;
+        END;
+    END LOOP;
+ELSE
+    RAISE NOTICE '"amcheck" extension does not appear to be installed.';
+END IF;
+END;
+$$;
+
+
+
+
+
+
+

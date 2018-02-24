@@ -1,14 +1,16 @@
-#!/bin/bash -
+#!/bin/bash
 
-## author: Bricklen Anderson
-##
+## Author: Bricklen Anderson
 ## Filename: taillog
 ## Usage: Run as postgres user, put this script in $PATH and execute as any other executable.
+## Requires superuser privilege to execute.
 
 set -o errexit
 
 PGPORT=5432     ## PGPORT is an environment var, but it is not always set, so default to 5432
 DBNAME=postgres ## maintenance db
+PGUSER=postgres
+MIN_COMPATIBILITY_VER=100000 # Certain commands require certain versions of Postgres
 
 usage()
 {
@@ -29,7 +31,6 @@ cat <<-EOF
 EOF
 }
 
-
 while getopts ":p:h" OPTION
 do
     case $OPTION in
@@ -48,66 +49,64 @@ do
 done
 
 
-GAWK=`which gawk`
+hash psql 2>/dev/null || { echo >&2 "psql command not available."; }
+hash pg_isready 2>/dev/null || { echo >&2 "pg_isready command not available."; }
+hash gawk 2>/dev/null || { echo >&2 "gawk command not available."; }
 
-## Get the PostgreSQL executable path. This is a hack.
-for p in `echo "/usr/pgsql-9.3/bin/psql /usr/bin/psql /usr/pgsql-9.2/bin/psql"`; do
-    if [ -x "$p" ]; then
-        PSQL="$p"
-        break
-    fi
-done
+CMD_PSQL=$(which psql 2>/dev/null)
+CMD_PGISREADY=$(which pg_isready 2>/dev/null)
+CMD_GAWK=$(which gawk 2>/dev/null)
+
 
 ## Exit if PostgreSQL executable path cannot be determined
-if [ "X$PSQL" == "X" ]; then
+if [ -z "$CMD_PSQL" ]; then
     echo "Postgresql executables not found. Exiting."
     exit 1
 fi
 
-## Get the PostgreSQL executable path
-export PGPATH=`dirname $PSQL`
-export PATH=$PGPATH:$PATH
-
 ## Check if gawk exists
-if [ "X$GAWK" == "X" ]; then
+if [ -z "$CMD_GAWK" ]; then
     echo "\"gawk\" not found. Please install gawk to use this script. Exiting."
     exit 1
 fi
 
-
 ## Exit if PostgreSQL port is not set
-if [ "X$PGPORT" == "X" ]; then
+if [ -z "$PGPORT" ]; then
     echo "Postgresql port not set. Exiting."
     exit 1
 fi
 
-if [ -x "$PGPATH/pg_isready" ]; then
-    ## Test if the cluster is up
-    retval=`$PGPATH/pg_isready -q -U postgres -p $PGPORT -t 3; echo $?`
+## Test if the cluster is up
+if [ -e "$CMD_PGISREADY" ]; then
+    retval=$(${CMD_PGISREADY} -h localhost -q -U "$PGUSER" -p $PGPORT -t 3; echo $?)
     if [ $retval -ne 0 ]; then
-        echo "The PostgreSQL cluster at port $PGPORT does not appear to be responding. Exiting."
+        echo "The PostgreSQL cluster at port $PGPORT does not appear to be responding. Aborting."
         exit 1
     fi
 fi
 
-SQL="
-with d as (select to_char(dt,'YYYY') as yyyy, to_char(dt,'MM') as mm, to_char(dt,'DD') dd from (select current_date at time zone current_setting('timezone') as dt) y)
-select  current_setting('data_directory') || '/' ||
-        current_setting('log_directory') || '/' ||
-        replace(replace(replace(
-            (case
-                when current_setting('log_destination') = 'csvlog' then replace(current_setting('log_filename'),'.log','.csv')
-                else current_setting('log_filename')
-            end),
-            '%Y',yyyy),
-            '%m',mm),
-            '%d',dd)
-from d";
+# Get the current Postgres server version
+PG_VERSION=$(${CMD_PSQL} -h localhost -d postgres -U "$PGUSER" -p $PGPORT -qtXAc "select current_setting('server_version_num') as ver")
 
-logfile=`psql -d $DBNAME -p $PGPORT -qtAc "$SQL"`
+if [ -z "$PG_VERSION" ]; then
+    echo "No Postgresql version found. Aborting."
+    exit 1
+elif [ -n ${PG_VERSION} ] && [ ${PG_VERSION} -ge ${MIN_COMPATIBILITY_VER} ]; then
+    # pg_current_logfile() is only available in Postgresql 10
+    SQL="SELECT current_setting('data_directory') || '/' || pg_current_logfile()"
+else
+    SQL="SELECT current_setting('data_directory')||'/'||current_setting('log_directory')||'/'||file FROM (SELECT file,(pg_stat_file(current_setting('log_directory')||'/'||file)).modification FROM pg_ls_dir(current_setting('log_directory')||'/') as list(file) ORDER BY 2 DESC LIMIT 1) as y"
+fi
 
-if [[ ! -e "$logfile" ]]; then
-    echo "DB logfile \"$logfile\" does not exist. Aborting..."
+if [ -z "$SQL" ]; then
+    echo "No SQL query defined. Aborting."
+    exit 1
+fi
+
+logfile=$(${CMD_PSQL} -h localhost -d "$DBNAME" -U "$PGUSER" -p $PGPORT -qtXAc "$SQL")
+
+if [ ! -e "$logfile" ]; then
+    echo "Postgresql log \"$logfile\" does not exist. Aborting."
     exit 1
 fi
 
@@ -125,26 +124,26 @@ fi
 
 ## TODO:
 ## tail -F should attempt to follow the file descriptor after rotation,
-## though it does not seem to work properly with postgres because a
-## new file is created upon rotation.
-## Workaround could be to put this in a wrapper that looks for
+## A challenge with Postgres is that a new file is created on rotation.
+## A workaround migh be to put this in a wrapper that looks for
 ## a new log file every N seconds.
 
 tail -F ${logfile} \
-| $GAWK --re-interval \
+| ${CMD_GAWK} --re-interval \
     '
     {
         gsub( /duration: [0-9]{1,5}\.[0-9]*/,   "'`tput setaf 2`'&'`tput sgr0`'" ); 
         gsub( /duration: [0-9]{6,}\.[0-9]*/,    "'`tput setaf 4; tput bold; tput smso`'&'`tput rmso; tput sgr0`'" ); 
-        gsub( /(ERROR|FATAL)/,                  "'`tput setaf 0; tput bold; tput setab 1`'&'`tput setab 0; tput sgr0`'");
+        gsub( /(ERROR|FATAL):/,                 "'`tput setaf 0; tput bold; tput setab 1`'&'`tput setab 0; tput sgr0`'");
         gsub( /(WARNING|cancel)/,               "'`tput setaf 3`'&'`tput sgr0`'");
-        gsub( /\(db=[a-zA-Z0-9.]+\)/,                 "'`tput setaf 5`'&'`tput sgr0`'");
+        gsub( /\(db=[a-zA-Z0-9.]+\)/,           "'`tput setaf 5`'&'`tput sgr0`'");
         if ( $0 !~ /\(user=(postgres)\)/ )
         {
-            gsub( /\(user=[a-zA-Z0-9.]+\)/,           "'`tput setaf 6`'&'`tput sgr0`'");
+            gsub( /\(user=[a-zA-Z0-9.]+\)/,     "'`tput setaf 6`'&'`tput sgr0`'");
         }
         print; 
     }
     '
 
 exit 0
+
