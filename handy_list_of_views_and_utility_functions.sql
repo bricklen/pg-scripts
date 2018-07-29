@@ -557,7 +557,6 @@ DROP VIEW IF EXISTS admin.age_of_tables;
 CREATE OR REPLACE VIEW admin.age_of_tables AS
 SELECT  nsp.nspname||'.'||c.relname as tablename,
         age(c.relfrozenxid) as xid_age,
-        to_timestamp(extract(epoch from now()) - age(c.relfrozenxid))::DATE as date_of_last_freeze,
         pg_size_pretty(pg_table_size(c.oid)) as table_size,
         pg_table_size(c.oid) as table_bytes,
         pg_table_size(c.oid) > 1073741824 as greater_than_1_gb
@@ -810,27 +809,33 @@ ORDER BY bytes DESC;
 
 
 CREATE OR REPLACE VIEW admin.last_analyzed AS
-SELECT  nspname as schemaname,
-        relname as tablename,
-        last_vacuum,
-        last_analyze,
-        to_timestamp(extract(epoch from now()) - age(relfrozenxid)) as last_frozen
-FROM
-    (SELECT c.oid,
-            N.nspname,
-            C.relname,
-            date_trunc('day',greatest(pg_stat_get_last_vacuum_time(C.oid),pg_stat_get_last_autovacuum_time(C.oid)))::date AS last_vacuum,
-            date_trunc('day',greatest(pg_stat_get_last_analyze_time(C.oid),pg_stat_get_last_analyze_time(C.oid)))::date AS last_analyze,
-            C.relfrozenxid
-    FROM pg_catalog.pg_class C
-    LEFT JOIN pg_catalog.pg_namespace N ON (N.oid = C.relnamespace)
-    WHERE C.relkind IN ('r', 't')
-    AND N.nspname NOT IN ('pg_catalog', 'information_schema')
-    AND N.nspname !~ '^pg_toast'
-    ) AS av
-WHERE (last_analyze IS NULL) OR (last_analyze < (now() - '1 day'::interval))
-ORDER BY last_analyze NULLS FIRST;
-
+SELECT  tablename,
+        xids_since_freeze,
+        multi_xids_since_freeze,
+        tx_before_wraparound_vacuum,
+        total_relation_size,
+        last_vacuum_time,
+        last_analyze_time,
+        ceil(100 * (xids_since_freeze::numeric / current_setting('autovacuum_freeze_max_age')::numeric)) as pct_of_wraparound
+FROM (
+    SELECT  oid::regclass::text AS tablename,
+            age(relfrozenxid) AS xids_since_freeze,
+            mxid_age(relminmxid) AS multi_xids_since_freeze, 
+            least( 
+                current_setting('autovacuum_freeze_max_age')::INT - age(relfrozenxid), 
+                current_setting('autovacuum_multixact_freeze_max_age')::INT - mxid_age(relminmxid) 
+            ) AS tx_before_wraparound_vacuum,
+            pg_size_pretty(pg_total_relation_size(oid)) AS total_relation_size,
+            greatest( pg_stat_get_last_autovacuum_time(oid), pg_stat_get_last_vacuum_time(oid) )::TIMESTAMP(0) as last_vacuum_time,
+            greatest( pg_stat_get_last_autoanalyze_time(oid), pg_stat_get_last_analyze_time(oid) )::TIMESTAMP(0) as last_analyze_time
+    FROM pg_catalog.pg_class
+    WHERE relfrozenxid != 0
+    AND relkind IN ('r', 't')
+    --AND oid > 16384
+) AS x
+WHERE (last_analyze_time IS NULL) OR (last_analyze_time < (now() - '1 day'::interval))
+ORDER BY tx_before_wraparound_vacuum
+;
 
 
 
