@@ -3,7 +3,7 @@
 '''
 #
 # Objective of this small program is to report memory usage using
-# useful memory metrics for Linux by default for user postgres.
+# useful memory metrics for Linux, by default for user postgres.
 #
 # It will group processes according to their URES (unique resident set size)
 # and also do reports based on per-username, per-program name and per-cpu
@@ -11,6 +11,8 @@
 #
 # Inspired by work of Aleksandr Koltsoff (czr@iki.fi) meminfo.py 2006 released
 # under GPL Version 2.
+# https://github.com/majava3000/meminfo
+# URES explanation: http://koltsoff.com/pub/ures/
 #
 # Current verison is not compatible with Python 3
 # Modified by Bricklen Anderson, 2017
