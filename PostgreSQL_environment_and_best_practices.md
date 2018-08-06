@@ -47,7 +47,7 @@ Monitoring
   * database size, db growth projections
   * cache hits,
   * hot tables (heavy churn),
-  * H.O.T (Heap Only Tables)
+  * H.O.T (Heap Only Tuples)
   * locks,
   * cancelled queries,
   * vacuum frequency, duration, and progress
@@ -66,7 +66,7 @@ Monitoring
   * duration of stored procedures called regularly
 * System monitoring: CPU, memory, IO, swap, DB connections
 * Replication monitoring: replication delay by bytes and by seconds, and if the standby is caught up
-* Specific to pg_dump backups on the slaves - check the slave via "pg_is_xlog_replay_paused()" to see if the slave is still paused after a backup finished (or aborted). if so, execute "pg_xlog_replay_resume()".
+* Specific to pg_dump backups on the replicas - check the replica via "pg_is_wal_replay_paused()" to see if the replica is still paused after a backup finished (or aborted). if so, execute "pg_wal_replay_resume()".
 
 Configuration
 -------------
@@ -95,7 +95,7 @@ Backup and Recovery
 * Define how backups are going to be taken.
 * The purpose of each type, where they are going, commands to run them, commands to test them.
 * [WAL-E](https://github.com/wal-e/wal-e#google-storage) does work with GCP, [WAL-G](https://github.com/wal-g/wal-g) currently does not work with GCP.
-* Have a look at [pghoard](https://github.com/ohmu/pghoard) and [pgbackrest](http://pgbackrest.org/)
+* Investigate physical backups using [pgbackrest](http://pgbackrest.org/)
 * Document and test how recoveries are to happen, what the commands are, who should have access, when a recovery should happen.
 
 Availability
@@ -193,6 +193,7 @@ As a thought exercise, imagine the network your documentation is in (eg. interna
 1. Log rotation
 1. Are Postgres logs monitored? Are action items created as appropriate?
 1. Is the slow query log regularly reviewed, and parsed using a tool like [pgBadger](https://github.com/dalibo/pgbadger)
+1. Review the details at https://www.skuggor.se/deployment-checklist.html, there are some good points there.
 
 
 Credits
