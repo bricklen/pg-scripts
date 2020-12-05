@@ -159,9 +159,9 @@ This is an document you can refer to and keep up to date every quarter or month,
  | Database design| - | - |- | Do we regularly review our design? Do we tackle tech debt? Do we factor in the usage of the schema and data, and the underlying hardware? Are we using the proper datatypes, and using Postgres effectively? | - |
  | Tooling| - | - | - | Are the tools used by all teams effective, easy to find and debug? Do they cover all use cases? Where are the gaps? What is the best language to use (eg. Shell, Python, Go)? | - |
  | Naming conventions and schema clarity| - | - | - | Naming conventions and documentation of object (tables/views/functions) functionality. | - |
- | Documentation and playbooks| - | - | - | - | Are the proper things documented? Is the documentation clear, and easy to find? Do playbooks exist for common or important issues? Do the docs fall out of date quickly? | - |
- | Data quality| - | - | - | - |  Is data quality checked regularly? Is validation scriptable? Eg. Invalid characters in data, unused columns or tables. | - |
- | Indexing| - | - | - | - | Do proper indexes exist? Any high write, low read? Unused indexes? Columns indexed multiple times? | - |
+ | Documentation and playbooks| - | - | - | Are the proper things documented? Is the documentation clear, and easy to find? Do playbooks exist for common or important issues? Do the docs fall out of date quickly? | - |
+ | Data quality| - | - | - | Is data quality checked regularly? Is validation scriptable? Eg. Invalid characters in data, unused columns or tables. | - |
+ | Indexing| - | - | - | Do proper indexes exist? Any high write, low read? Unused indexes? Columns indexed multiple times? | - |
  | Knowledge and training| - | - |- | Education level of Postgres features, Do's and Dont's, Best Practices, tailored to devs and DBA's as necessary. | - | 
  | Security and access controls| - | - | - | TLS/SSL connections? Does unencrypted data leave the network? Is data encrypted at rest? Are backups encrypted? Is the encryption key safe? pg_hba.conf, permissions to objects in the databases, proper roles to query data, OS-level permissions and accountability. IPS/IDS, security breach prevention. Encryption (backups, at rest), other | - |
  | Auditing/auditability| - | - |- | Ability to audit who connects to the databases, when, what they do. | - |
