@@ -142,35 +142,50 @@ This is an document you can refer to and keep up to date every quarter or month,
  | --- | --- | --- | --- | --- | --- |
  | Performance, configuration| - | - | - | Configuration changes, testing of changes for performance improvements. | - |
  | Performance, queries| - | - | pgbader, EXPLAIN | Ongoing, query tuning, schema changes | - |
- | Monitoring| - | - | sensu, cron, emails, slack, Splunk | Tracking and notification of relevant metrics. | - | 
- | Metrics| - | - | - | - | - |
+ | Monitoring, alerting| - | - | Sensu, cron, emails, slack, Splunk | Tracking and notification of relevant metrics. | - | 
+ | Metrics, instrumentation| - | - | Prometheus, other | Tracking and notification of relevant health statistics and metrics. | - |
+ | Observability | - | - | Honeycomb, other | - | - |
+ | Automation| - | - | - | Automate as many steps as possible. Including backups, failovers, recoveries, new server/db creation, new users and roles.. | - |
+ | Testing| - | - | What methods are used to test databases and queries? TAP, unit, integration testing? Are dev and staging environments available? Are they regularly cleaned up? Are they easy to spin up? | - | - |
  | Dashboard| - | - | - | - | - |
- | Uptime/Availability| - | - | pg_isready | More of a status in general. | - |   
- | Replication| - | - | WAL-E, streaming, logical | - | - |
+ | Code releases and upgrades| - | - | - | - | - |
+ | Linux/postgres patching| - | - | - | - | - |
+ | SLOs/SLIs| - | - | pg_isready | Uptime, Availability, saturation, latency, RPO, RTO, MTTB, MTTR | - |   
+ | Replication| - | - | WAL-E, streaming, logical | Can replication be rebuilt with a high degree of success? Can it be done quickly, and with a minimum of interaction? | - |
  | Replication rebuilds| - | - | pg_rewind, custom rebuild scripts | - | - | 
- | Failover| - | - | custom, Patroni | Determine when and how to failover. Should be tooling to allow full functionality. | - | 
- | Discoverability| - | - |- | - | - |
- | Maintenance| - | - | - | Detecting databases that are in need of maintenance. Ongoing maintenance cycles. | - | 
- | Schema clarity| - | - | - | Naming conventions and documentation of object (tables/views/functions) functionality. | - |
- | Documentation| - | - | - | - |  - | - |
- | Knowledge level, devs| - | - |- | Education level of Postgres features, Do's and Dont's, Best Practices, dev-centric. | - | 
- | Knowledge level, Ops| - | - | - | Education level of Postgres features, Do's and Dont's, Best Practices, Ops-centric. | - |
- | Access Controls| - | - | - | pg_hba.conf, permissions to objects in the databases | - |
+ | Failover| - | - | custom, pg_auto_failover, Patroni | Determine when and how to failover. Should be tooling to allow full functionality. | - | 
+ | Discoverability and routing| - | - | Consul, HAProxy, other | Can the databases and clusters and servers be discovered easily, without ambiguity? It must be 100% clear what the primary is at all times. | - |
+ | Maintenance| - | - | - | Detecting databases that are in need of maintenance. Ongoing maintenance cycles. | - |
+ | Database design| - | - |- | Do we regularly review our design? Do we tackle tech debt? Do we factor in the usage of the schema and data, and the underlying hardware? Are we using the proper datatypes, and using Postgres effectively? | - |
+ | Tooling| - | - | - | Are the tools used by all teams effective, easy to find and debug? Do they cover all use cases? Where are the gaps? What is the best language to use (eg. Shell, Python, Go)? | - |
+ | Naming conventions and schema clarity| - | - | - | Naming conventions and documentation of object (tables/views/functions) functionality. | - |
+ | Documentation and playbooks| - | - | - | - | Are the proper things documented? Is the documentation clear, and easy to find? Do playbooks exist for common or important issues? Do the docs fall out of date quickly? | - |
+ | Data quality| - | - | - | - |  Is data quality checked regularly? Is validation scriptable? Eg. Invalid characters in data, unused columns or tables. | - |
+ | Indexing| - | - | - | - | Do proper indexes exist? Any high write, low read? Unused indexes? Columns indexed multiple times? | - |
+ | Knowledge and training| - | - |- | Education level of Postgres features, Do's and Dont's, Best Practices, tailored to devs and DBA's as necessary. | - | 
+ | Security and access controls| - | - | - | TLS/SSL connections? Does unencrypted data leave the network? Is data encrypted at rest? Are backups encrypted? Is the encryption key safe? pg_hba.conf, permissions to objects in the databases, proper roles to query data, OS-level permissions and accountability. IPS/IDS, security breach prevention. Encryption (backups, at rest), other | - |
  | Auditing/auditability| - | - |- | Ability to audit who connects to the databases, when, what they do. | - |
- | Cluster role accuracy| - | - | - | Must be able to determine with 100% accuracy the role of a Postgres cluster at all times. (master/replica etc) | - |
- | Analytics| - | - | - | Analysis of our data, Postgresql-specific, as well as client data | - |
- | Backups, status/accounting| - | - |- | Ability to determine the status of backups, duration, age, location, size. | - |
- | Backups, testing| - | - | Erawan, custom | Backups cannot be relied upon unless they are restored and tested. | - |
- | Backups, types| - | - | - | Bootstrap, logical, file-system | - |
- | Recovery options| - | - | - | Allow specific pg_dump backups to be recovered on demand. Probably a documentation task is sufficient. | - |
- | ETL, bulk loading| - | - | - | - | - |
- | Change management| - | - | - | Version control, git, puppet/ansible | - |
+ | Support and code reviews| - | - | - | Are the DBA's communicating clearly, regularly, and effectively to developers and business leaders? Are they part of every relevant code review? Is there an established and frictionless feedback loop for bugs and suggestions? | - |
+ | Cluster role identification| - | - | - | Must be able to determine with 100% accuracy the role of a Postgres cluster at all times. (master/replica etc) | - |
+ | Analytics and reporting| - | - | - | Analysis of our data, Postgresql-specific, as well as client data. Are deeper analytics desirable, if so, is it possible to get that data without undue resource usage? Are tools in place so that analysts and power users can get the data they need? | - |
+ | Backups, status/accounting| - | - |- | Ability to determine the status of backups, duration, age, location, size. Deadman switch to alert if backups haven't occurred. | - |
+ | Backups, testing| - | - | Erawan, custom | Backups cannot be relied upon unless they are restored and tested. Is there a process in place to test the backups regularly? Is the status tracked? Are long-running backups tracked? What about backups that failed silently? | - |
+ | Backup types| - | - | - | Bootstrap, logical, physical | - |
+ | Recovery options| - | - | - | What recovery options must exist in the environment to be able to meet RPO and RTO requirements? | - |
+ | ETL/ELT, bulk loading| - | - | - | What are the requirements for ETL? Is bulk loading necessary? Are these easy to achieve, without unexpected problems or human error? | - |
+ | Change management| - | - | - | Version control, git, puppet/ansible. Is DDL and all db-related code in version control? Does it get deployed to Postgres in a repeatable and safe fashion? | - |
  | Data export| - | - | - | Customer driven, archiving, long-term data storage, etc. Somewhat similar to Archiving. | - |
- | Archive/purge older data| - | - |- | Ability to move data out, and destroy data. | - |
- | PITR| - | - | WAL-E, WAL-G, custom | Keep base backups + WALs in offsite storage locations in case we need to recover. | - |
- | Data availability/reporting| - | - | Hydra | - | - |
- | Connectivity tracking| - | - | - | When messages show in the db logs about WAL-shipping or SR failing, track time. Correlation to network events? | - |
-
+ | Data stewardship| - | - | - | Do policies exist around data retention, archiving older data, and purging unnecessary data? Have GDPR policies been followed? | - |
+ | PITR| - | - | WAL-E, WAL-G, custom | Is Point in Time Recovery required? Can base backups + WALs be kept in offsite storage locations in the event a recovery is needed? Is HA required? | - |
+ | Data availability/reporting| - | - | - | Is your data available to be queried by other tools? Is reporting, ad hoc and scheduled, required? | - |
+ | Connectivity tracking| - | - | - | Is connectivity to/from/between databases being monitored? Are notifications set up to alert if there is a break in connectivity? Are there statistics being tracked about connectivity? | - |
+ | Capacity Planning| - | - | - | Track and extrapolate for servers, databases, tables/indexes, connection counts, users. If we own our own servers, do we need to plan well in advance to purchase hardware? | - |
+ | High Availability| - | - | - | Is HA required? Has it been tested thoroughly? | - |
+ | Disaster Recovery| - | - | - | What are the requirements for DR? Do you have full support from senior management? Do DR facilities exist? Are DR processes regularly tested? | - |
+ | Business Continuity| - | - | - | Is there a business continuity plan? Does it include the proper stakeholders, escalation contacts, and how privileges and permissions should work if key people are not available? | - |
+ | RCA and DMAIC process| - | - | - | Is there a process in place to conduct RCA's, and a template to follow? Are action items created and followed up on? | - |
+ | Major Incident management| - | - | - | Have major incidents been discussed and planned for? Does everyone know their role? Is there a process in place for clear lines of communication? What are the alternate methods of communication? Is the MIM process regularly tested, particularly when there is stakeholder turnover? Have data breaches and security incidents been covered? | - |
+ | Cloud computing| - | - | - | A large topic, and would include private vs public, providers, networking, monitoring, tooling, experience and training, skills leveling-up. | - |
  
 
 
